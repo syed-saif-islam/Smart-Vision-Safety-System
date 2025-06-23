@@ -1,0 +1,91 @@
+import cv2
+import time
+import winsound  # Use playsound for Linux/Mac
+from tkinter import Tk, Button, messagebox, Frame
+
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
+
+if face_cascade.empty() or eye_cascade.empty():
+    root = Tk()
+    root.withdraw()
+    messagebox.showerror("Error", "Haarcascade files not loaded properly.")
+    exit()
+
+detect_face = True  
+detect_eye = True
+eye_closed_start_time = None  # Track when eyes first close
+alarm_duration = 3  # Time in seconds before alarm triggers
+
+def play_alarm():
+    """Plays an alarm sound."""
+    winsound.Beep(1000, 500)  # Beep at 1000 Hz for 500ms (Windows)
+    # playsound("alarm.mp3")  # Uncomment for Linux/Mac, use an actual alarm file
+
+def start_detection():
+    global detect_face, detect_eye, eye_closed_start_time
+
+    cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        messagebox.showerror("Error", "Could not access webcam.")
+        return
+
+    print("Starting detection. Press 'q' to exit.")
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("Error: Unable to read frame from webcam.")
+            break
+
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        faces = []
+        eyes = []
+
+        if detect_face:
+            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
+            for (x, y, w, h) in faces:
+                cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
+                cv2.putText(frame, "Face", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+
+                if detect_eye:
+                    roi_gray = gray[y:y+h, x:x+w]
+                    roi_color = frame[y:y+h, x:x+w]
+                    eyes = eye_cascade.detectMultiScale(roi_gray, scaleFactor=1.1, minNeighbors=10)
+                    for (ex, ey, ew, eh) in eyes:
+                        cv2.rectangle(roi_color, (ex, ey), (ex+ew, ey+eh), (0, 0, 255), 2)
+                        cv2.putText(roi_color, "Eye", (ex, ey - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+
+        if detect_eye and not len(eyes):  # No eyes detected (eyes closed)
+            if eye_closed_start_time is None:  # First time detecting closed eyes
+                eye_closed_start_time = time.time()
+            elif time.time() - eye_closed_start_time >= alarm_duration:
+                play_alarm()
+                eye_closed_start_time = None  # Reset after alarm
+        else:
+            eye_closed_start_time = None  # Reset timer if eyes open
+
+        cv2.imshow("Face and Eye Detection", frame)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+root = Tk()
+root.title("Face and Eye Detection App")
+root.geometry("400x400")
+root.resizable(False, False)
+
+button_frame = Frame(root)
+button_frame.pack(pady=50)
+
+start_button = Button(button_frame, text="Start Webcam Detection", command=start_detection, width=25, height=2, bg="#F44336", fg="white", font=("Arial", 12, "bold"))
+start_button.grid(row=0, column=0, padx=10, pady=10)
+
+quit_button = Button(button_frame, text="Quit", command=root.quit, width=25, height=2, bg="#4CAF50", fg="white", font=("Arial", 12, "bold"))
+quit_button.grid(row=1, column=0, padx=10, pady=10)
+
+root.mainloop()
