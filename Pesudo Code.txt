@@ -1,0 +1,40 @@
+START
+
+# Initialize System
+Load the face detector (haarcascade)
+Load the eye detector (haarcascade)
+Load shape predictor (dlib)
+Load alarm sound file
+
+# Start Video Capture
+WHILE video stream is active:
+    Capture frame from the camera
+
+    # Face Detection
+    Detect face in the frame using haarcascade
+    IF face is detected:
+        Crop the face region
+
+        # Eye Detection
+        Detect eyes in the cropped face using haarcascade
+        IF both eyes are detected:
+            Extract left and right eye
+
+            # Pupil Detection
+            Analyze eye aspect ratio (EAR) to determine if eyes are open or closed
+            IF eyes are closed for 5 consecutive frames:
+                Play alarm sound (Alert.wav)
+
+        ELSE:
+            # If eyes are not detected, assume the driver is looking away
+            Play alarm sound (Alert.wav)
+
+    ELSE:
+        # If face is not detected, assume distraction
+        Play alarm sound (Alert.wav)
+
+    Display the processed video frame
+
+END WHILE
+
+STOP
